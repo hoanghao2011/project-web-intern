@@ -140,7 +140,7 @@ export default function EquipmentDetailPage() {
         <Card className="flex flex-col items-center justify-center gap-3">
           <p className="text-sm font-medium text-slate-700">Mã QR tra cứu</p>
           <div className="rounded-lg border border-slate-200 p-3">
-            <QRCode value={equipment.code} size={140} />
+            <QRCode value={`${window.location.origin}/equipment/${equipment._id}`} size={140} />
           </div>
           <p className="font-mono text-xs text-slate-500">{equipment.code}</p>
           <button
