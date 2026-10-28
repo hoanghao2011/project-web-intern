@@ -1,6 +1,8 @@
 import Site from '../models/Site.js';
 import Equipment from '../models/Equipment.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { AppError } from '../utils/AppError.js';
+import { assertSiteDeletable } from '../services/siteService.js';
 
 export const getSites = asyncHandler(async (req, res) => {
   const sites = await Site.find().sort({ createdAt: -1 });
@@ -9,7 +11,7 @@ export const getSites = asyncHandler(async (req, res) => {
 
 export const getSite = asyncHandler(async (req, res) => {
   const site = await Site.findById(req.params.id);
-  if (!site) return res.status(404).json({ message: 'Không tìm thấy công trình' });
+  if (!site) throw new AppError('Không tìm thấy công trình', 404);
 
   const equipment = await Equipment.find({ currentSite: site._id }).populate('category', 'name');
   res.json({ site, equipment });
@@ -25,16 +27,13 @@ export const updateSite = asyncHandler(async (req, res) => {
     new: true,
     runValidators: true,
   });
-  if (!site) return res.status(404).json({ message: 'Không tìm thấy công trình' });
+  if (!site) throw new AppError('Không tìm thấy công trình', 404);
   res.json(site);
 });
 
 export const deleteSite = asyncHandler(async (req, res) => {
-  const inUse = await Equipment.countDocuments({ currentSite: req.params.id });
-  if (inUse > 0) {
-    return res.status(400).json({ message: 'Không thể xóa công trình đang có thiết bị được cấp phát' });
-  }
+  await assertSiteDeletable(req.params.id);
   const site = await Site.findByIdAndDelete(req.params.id);
-  if (!site) return res.status(404).json({ message: 'Không tìm thấy công trình' });
+  if (!site) throw new AppError('Không tìm thấy công trình', 404);
   res.json({ message: 'Đã xóa công trình' });
 });

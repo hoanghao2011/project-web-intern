@@ -1,0 +1,49 @@
+services:
+  mongo:
+    image: mongo:7
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand({ ping: 1 })"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mongo-init:
+    image: mongo:7
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: >
+      mongosh --host mongo:27017 --eval
+      "try { rs.status() } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]}) }"
+
+  server:
+    build: ./server
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+    env_file:
+      - ./server/.env
+    environment:
+      MONGO_URI: mongodb://mongo:27017/equipment_management_intern?replicaSet=rs0
+      CLIENT_URL: http://localhost:8080
+    ports:
+      - "5001:5001"
+    volumes:
+      - uploads_data:/app/uploads
+
+  client:
+    build: ./client
+    depends_on:
+      - server
+    ports:
+      - "8080:80"
+
+volumes:
+  mongo_data:
+  uploads_data:

@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import { equipmentApi } from '../api/equipment';
-import { categoryApi } from '../api/category';
-import { siteApi } from '../api/site';
+import { useEquipmentList } from '../hooks/useEquipmentList';
+import { useCategories } from '../hooks/useCategories';
+import { useSites } from '../hooks/useSites';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
+import Spinner from '../components/Spinner';
+import ErrorBanner from '../components/ErrorBanner';
+import EmptyState from '../components/EmptyState';
 import { STATUS_LABELS } from '../lib/constants';
 import { formatCurrency } from '../lib/format';
 import { useAuth } from '../context/AuthContext';
@@ -16,10 +19,6 @@ export default function EquipmentListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [data, setData] = useState({ items: [], total: 0, page: 1, totalPages: 1 });
-  const [categories, setCategories] = useState([]);
-  const [sites, setSites] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(searchParams.get('search') || '');
 
   const category = searchParams.get('category') || '';
@@ -27,18 +26,14 @@ export default function EquipmentListPage() {
   const site = searchParams.get('site') || '';
   const page = Number(searchParams.get('page') || 1);
 
-  useEffect(() => {
-    categoryApi.list().then(setCategories);
-    siteApi.list().then(setSites);
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    equipmentApi
-      .list({ category, status, site, search: searchParams.get('search') || '', page, limit: 15 })
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, [category, status, site, page, searchParams]);
+  const { data: categories = [] } = useCategories();
+  const { data: sites = [] } = useSites();
+  const {
+    data = { items: [], total: 0, page: 1, totalPages: 1 },
+    isLoading,
+    isError,
+    refetch,
+  } = useEquipmentList({ category, status, site, search: searchParams.get('search') || '', page, limit: 15 });
 
   function updateParam(key, value) {
     const next = new URLSearchParams(searchParams);
@@ -125,9 +120,11 @@ export default function EquipmentListPage() {
         </div>
       </Card>
 
+      {isError && <ErrorBanner message="Không thể tải danh sách thiết bị." onRetry={refetch} />}
+
       <Card className="!p-0">
-        {loading ? (
-          <p className="py-8 text-center text-slate-500">Đang tải...</p>
+        {isLoading ? (
+          <Spinner />
         ) : (
           <table className="w-full text-sm">
             <thead>
@@ -157,12 +154,10 @@ export default function EquipmentListPage() {
                   <td className="px-5 py-3"><StatusBadge status={eq.status} /></td>
                 </tr>
               ))}
-              {data.items.length === 0 && (
-                <tr><td colSpan={7} className="py-10 text-center text-slate-400">Không tìm thấy thiết bị nào</td></tr>
-              )}
             </tbody>
           </table>
         )}
+        {!isLoading && data.items.length === 0 && <EmptyState message="Không tìm thấy thiết bị nào" />}
 
         {data.totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3">

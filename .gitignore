@@ -6,3 +6,8 @@ build/
 *.log
 .DS_Store
 server/uploads/
+
+# Test artifacts
+client/test-results/
+client/playwright-report/
+coverage/

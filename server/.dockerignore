@@ -1,0 +1,8 @@
+node_modules
+npm-debug.log
+.env
+.env.example
+uploads
+src/test
+src/**/__tests__
+vitest.config.js

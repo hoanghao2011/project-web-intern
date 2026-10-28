@@ -21,9 +21,27 @@ Dự án được xây dựng để mô phỏng bài toán thực tế của m�
 
 ## Công nghệ sử dụng
 
-**Frontend:** React 19 + Vite, TailwindCSS 4, React Router, Recharts, react-qr-code, React Hook Form + Zod, Axios
+**Frontend:** React 19 + Vite, TailwindCSS 4, React Router, TanStack React Query, Socket.io-client, Recharts, react-qr-code, React Hook Form + Zod, Axios
 
-**Backend:** Node.js/Express 5, MongoDB + Mongoose, JWT + bcrypt, Multer (upload file), express-validator
+**Backend:** Node.js/Express 5, MongoDB + Mongoose (transaction qua session), Socket.io, JWT + bcrypt, Multer (upload file), express-validator
+
+**Testing:** Vitest + Supertest + mongodb-memory-server (backend), Vitest + React Testing Library (frontend component/hook), Playwright (E2E)
+
+**DevOps:** GitHub Actions CI (lint + unit/integration + E2E), Docker + docker-compose (Mongo replica set, server, client qua nginx)
+
+## Kiến trúc backend
+
+Controller chỉ xử lý HTTP request/response; toàn bộ business logic nằm ở **service layer** (`server/src/services/`):
+
+- `equipmentStateMachine.js` — nguồn chân lý duy nhất cho vòng đời trạng thái thiết bị (`STATUS_TRANSITIONS` trong `models/Equipment.js`). Trước đây logic này bị lặp lại không nhất quán ở 3 nơi khác nhau (đổi trạng thái thủ công, xuất kho tự động active, hoàn thành sửa chữa tự động active) — nay tất cả đều đi qua `assertValidTransition`/`applyStatusTransition`.
+- `transactionService.js`, `maintenanceService.js` — bọc các thao tác ghi kép (cập nhật Equipment + tạo TransactionLog/MaintenanceRecord) trong Mongoose session/transaction để đảm bảo tính toàn vẹn dữ liệu khi có lỗi giữa chừng.
+- Lỗi nghiệp vụ được throw dưới dạng `AppError` (không đụng `req`/`res`), xử lý tập trung ở `middleware/errorHandler.js`.
+
+**Lưu ý:** vì dùng Mongoose transaction, MongoDB phải chạy dưới dạng **replica set** (kể cả single-node) — xem phần "Yêu cầu" bên dưới.
+
+## Real-time
+
+Backend dùng Socket.io, xác thực qua JWT ở bước handshake. Sau khi service layer commit thành công một thao tác ghi (đổi trạng thái, nhập/xuất kho, ghi nhận bảo trì), server phát sự kiện (`equipment:updated`, `transaction:created`, `maintenance:created`). Frontend lắng nghe các sự kiện này và gọi `queryClient.invalidateQueries` (React Query) để tự động làm mới dữ liệu trên mọi tab đang mở — không cần reload thủ công.
 
 ## Cấu trúc dự án
 
@@ -31,15 +49,21 @@ Dự án được xây dựng để mô phỏng bài toán thực tế của m�
 project/
 ├── server/               # Backend Express API
 │   └── src/
-│       ├── config/       # Kết nối DB, cấu hình multer
+│       ├── config/       # Kết nối DB, CORS, cấu hình multer
 │       ├── models/       # Mongoose schemas
-│       ├── controllers/  # Business logic
+│       ├── services/     # Business logic (state machine, transaction, ...)
+│       ├── controllers/  # HTTP request/response
 │       ├── routes/       # API routes
 │       ├── middleware/   # Auth, validation, error handling
+│       ├── socket/       # Socket.io server + JWT handshake
+│       ├── test/         # Test setup & helpers (mongodb-memory-server)
 │       └── scripts/      # Seed dữ liệu mẫu
 └── client/               # Frontend React (Vite)
+    ├── e2e/              # Playwright E2E specs
     └── src/
         ├── api/          # Axios API modules
+        ├── hooks/        # React Query hooks, socket cache invalidation
+        ├── lib/          # queryClient, socket client
         ├── pages/        # Các trang chính
         ├── components/   # Component dùng chung
         └── context/      # Auth context
@@ -49,7 +73,14 @@ project/
 
 ### Yêu cầu
 - Node.js 18+
-- MongoDB (local hoặc MongoDB Atlas)
+- MongoDB chạy dưới dạng **replica set** (kể cả single-node), vì backend dùng Mongoose transaction:
+  ```bash
+  # Nếu chạy mongod thủ công:
+  mongod --replSet rs0
+  # Sau đó init 1 lần duy nhất:
+  mongosh --eval "rs.initiate()"
+  ```
+  Xem `server/.env.example` để biết định dạng URI (`?replicaSet=rs0`).
 
 ### Backend
 
@@ -58,6 +89,7 @@ cd server
 npm install
 npm run seed             # tạo dữ liệu mẫu (thiết bị, công trình, lịch sử...)
 npm run dev              # http://localhost:5001
+npm test                 # chạy test suite (Vitest + mongodb-memory-server, tự động dùng Mongo in-memory)
 ```
 
 ### Frontend
@@ -66,7 +98,17 @@ npm run dev              # http://localhost:5001
 cd client
 npm install
 npm run dev               # http://localhost:5174
+npm test                  # unit/component test (Vitest + React Testing Library)
+npm run test:e2e          # E2E (Playwright) — cần backend đang chạy + đã seed dữ liệu
 ```
+
+### Chạy bằng Docker Compose
+
+```bash
+docker compose up --build
+```
+
+Khởi động MongoDB (replica set 1 node, tự init), backend (`http://localhost:5001`) và frontend qua nginx (`http://localhost:8080`). Dữ liệu Mongo và thư mục `uploads` được lưu ở Docker volume, không mất khi container restart.
 
 ### Tài khoản demo (sau khi chạy `npm run seed`)
 

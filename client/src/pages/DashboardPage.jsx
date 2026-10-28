@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import {
   PieChart,
   Pie,
@@ -17,6 +17,8 @@ import {
 import { Package, Wrench, AlertTriangle, Archive } from 'lucide-react';
 import { dashboardApi } from '../api/dashboard';
 import Card from '../components/Card';
+import Spinner from '../components/Spinner';
+import ErrorBanner from '../components/ErrorBanner';
 import { STATUS_LABELS, STATUS_CHART_COLORS } from '../lib/constants';
 
 const MONTH_LABELS = [
@@ -52,34 +54,34 @@ function buildTrendData(raw) {
 }
 
 export default function DashboardPage() {
-  const [summary, setSummary] = useState(null);
-  const [statusDist, setStatusDist] = useState([]);
-  const [categoryDist, setCategoryDist] = useState([]);
-  const [trend, setTrend] = useState([]);
-  const [avgAge, setAvgAge] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const results = useQueries({
+    queries: [
+      { queryKey: ['dashboard', 'summary'], queryFn: dashboardApi.summary },
+      { queryKey: ['dashboard', 'statusDistribution'], queryFn: dashboardApi.statusDistribution },
+      { queryKey: ['dashboard', 'categoryDistribution'], queryFn: dashboardApi.categoryDistribution },
+      { queryKey: ['dashboard', 'monthlyTrend'], queryFn: dashboardApi.monthlyTrend },
+      { queryKey: ['dashboard', 'averageAge'], queryFn: dashboardApi.averageAge },
+    ],
+  });
 
-  useEffect(() => {
-    Promise.all([
-      dashboardApi.summary(),
-      dashboardApi.statusDistribution(),
-      dashboardApi.categoryDistribution(),
-      dashboardApi.monthlyTrend(),
-      dashboardApi.averageAge(),
-    ])
-      .then(([s, status, category, monthlyTrend, age]) => {
-        setSummary(s);
-        setStatusDist(status);
-        setCategoryDist(category);
-        setTrend(buildTrendData(monthlyTrend));
-        setAvgAge(age);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const [summaryQuery, statusQuery, categoryQuery, trendQuery, ageQuery] = results;
+  const isLoading = results.some((r) => r.isLoading);
+  const isError = results.some((r) => r.isError);
+  const refetchAll = () => results.forEach((r) => r.refetch());
 
-  if (loading) {
-    return <div className="py-20 text-center text-slate-500">Đang tải dữ liệu...</div>;
+  if (isLoading) {
+    return <Spinner label="Đang tải dữ liệu..." />;
   }
+
+  if (isError) {
+    return <ErrorBanner message="Không thể tải dữ liệu thống kê." onRetry={refetchAll} />;
+  }
+
+  const summary = summaryQuery.data;
+  const statusDist = statusQuery.data;
+  const categoryDist = categoryQuery.data;
+  const trend = buildTrendData(trendQuery.data);
+  const avgAge = ageQuery.data;
 
   return (
     <div className="space-y-6">

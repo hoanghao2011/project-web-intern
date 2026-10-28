@@ -11,13 +11,11 @@ import transactionRoutes from './routes/transactionRoutes.js';
 import maintenanceRoutes from './routes/maintenanceRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
+import { getAllowedOrigins } from './config/cors.js';
 
 const app = express();
 
-const allowedOrigins = (process.env.CLIENT_URL || '')
-  .split(',')
-  .map((url) => url.trim())
-  .filter(Boolean);
+const allowedOrigins = getAllowedOrigins();
 
 app.use(
   cors({

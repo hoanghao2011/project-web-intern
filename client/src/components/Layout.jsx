@@ -9,6 +9,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSocketInvalidation } from '../hooks/useSocketInvalidation';
 import { ROLE_LABELS } from '../lib/constants';
 
 const NAV_ITEMS = [
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  useSocketInvalidation();
 
   return (
     <div className="flex h-screen bg-slate-50">
