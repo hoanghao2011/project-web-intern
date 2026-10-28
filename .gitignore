@@ -11,3 +11,7 @@ server/uploads/
 client/test-results/
 client/playwright-report/
 coverage/
+
+# Personal notes (not for public repo)
+INTERVIEW_PREP.md
+MOCK_INTERVIEW.md
