@@ -1,8 +1,8 @@
-# Equipment Management System (bản phát triển cho CV Intern Web)
+# Equipment Management System
 
-> **Lưu ý:** đây là bản fork độc lập của dự án gốc tại `D:\project` (dùng cho CV Chuyên viên QLVT & Thiết bị — [repo gốc](https://github.com/hoanghao2011/equipment-management-system), [demo gốc](https://client-ochre-phi-81.vercel.app)). Bản này chạy trên port riêng (backend `5001`, frontend `5174`, database local `equipment_management_intern`) để phát triển song song mà không ảnh hưởng bản gốc, hướng tới bổ sung các tính năng kỹ thuật sâu hơn (testing, service layer, CI/CD, real-time...) phù hợp CV apply vị trí Intern Web Developer.
+**Demo:** [project-web-intern.vercel.app](https://project-web-intern.vercel.app) · **API:** [project-web-intern.onrender.com/api/health](https://project-web-intern.onrender.com/api/health)
 
-Ứng dụng web quản lý vòng đời thiết bị/vật tư trong doanh nghiệp xây dựng: nhập kho, xuất kho/cấp phát theo công trình, bảo trì định kỳ, sửa chữa, thanh lý — kèm dashboard thống kê và mã QR tra cứu nhanh cho từng thiết bị.
+> Backend chạy trên Render free tier, có thể "ngủ" sau ~15 phút không hoạt động — lần truy cập đầu tiên có thể mất 30-50s để khởi động lại.
 
 Ứng dụng web quản lý vòng đời thiết bị/vật tư trong doanh nghiệp xây dựng: nhập kho, xuất kho/cấp phát theo công trình, bảo trì định kỳ, sửa chữa, thanh lý — kèm dashboard thống kê và mã QR tra cứu nhanh cho từng thiết bị.
 
